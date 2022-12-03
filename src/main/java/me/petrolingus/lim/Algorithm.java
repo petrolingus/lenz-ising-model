@@ -77,7 +77,9 @@ public class Algorithm {
                 }
             }
         }
-        energyList.offer(energy);
+        if (time > NORMALIZING_STEPS) {
+            energyList.offer(energy);
+        }
         time++;
         if (time == Configuration.MAX_STEPS) {
             isDone = true;
@@ -88,7 +90,7 @@ public class Algorithm {
         return matrix;
     }
 
-    public double getTime() {
+    public int getTime() {
         return time;
     }
 

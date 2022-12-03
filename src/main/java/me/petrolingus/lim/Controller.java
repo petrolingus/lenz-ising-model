@@ -1,11 +1,13 @@
 package me.petrolingus.lim;
 
-import com.ibm.icu.text.SpoofChecker;
 import de.gsi.chart.XYChart;
 import de.gsi.chart.axes.spi.DefaultNumericAxis;
 import de.gsi.chart.renderer.ErrorStyle;
 import de.gsi.chart.renderer.spi.ErrorDataSetRenderer;
+import de.gsi.dataset.DataSet;
 import de.gsi.dataset.spi.DoubleDataSet;
+import de.gsi.math.DataSetMath;
+import javafx.application.Platform;
 import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
@@ -22,13 +24,12 @@ import static me.petrolingus.lim.Configuration.*;
 public class Controller {
 
     public ImageView imageView;
-
     public StackPane stackPane;
-
+    public StackPane stackPane1;
     public TextField maxStepsField;
     public TextField temperatureField;
-
     private XYChart chart;
+    private XYChart chart1;
 
     public void initialize() {
 
@@ -38,10 +39,15 @@ public class Controller {
         chart = new XYChart(new DefaultNumericAxis(), new DefaultNumericAxis());
         chart.setAnimated(false);
         stackPane.getChildren().add(chart);
-        final ErrorDataSetRenderer errorRenderer = new ErrorDataSetRenderer();
+
+        ErrorDataSetRenderer errorRenderer = new ErrorDataSetRenderer();
         chart.getRenderers().setAll(errorRenderer);
         errorRenderer.setErrorType(ErrorStyle.NONE);
         errorRenderer.setDrawMarker(false);
+
+        chart1 = new XYChart(new DefaultNumericAxis(), new DefaultNumericAxis());
+        chart1.setAnimated(false);
+        stackPane1.getChildren().add(chart1);
     }
 
     public void startButton() {
@@ -86,6 +92,11 @@ public class Controller {
                 dataSet.add(algorithm.getTime(), poll);
             }
             if (algorithm.isDone()) {
+                DataSet derivative = DataSetMath.derivativeFunction(dataSet);
+                derivative.setStyle("strokeColor=darkgreen;fillColor=darkgreen;strokeWidth=1");
+                Platform.runLater(() -> {
+                    chart1.getDatasets().addAll(derivative);
+                });
                 executorService.shutdown();
             }
         }, 300, 1, TimeUnit.MILLISECONDS);
