@@ -7,13 +7,13 @@ import static me.petrolingus.lim.Configuration.*;
 
 public class Algorithm {
 
-    private int[][] matrix = new int[N][N];
+    private final int[][] matrix = new int[N][N];
     private int time;
     private double energy;
     private boolean isDone = false;
     public Queue<Double> energyList = new ArrayDeque<>();
 
-    private double temperature;
+    private final double temperature;
 
     public Algorithm(double temperature) {
         this.temperature = temperature;
@@ -92,6 +92,7 @@ public class Algorithm {
         return time;
     }
 
+    @SuppressWarnings("unused")
     public double getEnergy() {
         return energy;
     }
@@ -100,6 +101,7 @@ public class Algorithm {
         return isDone;
     }
 
+    @SuppressWarnings("unused")
     private double calculateEnergy() {
         double energy = 0;
         for (int i = 0; i < N; i++) {
