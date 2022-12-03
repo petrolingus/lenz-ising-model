@@ -6,7 +6,9 @@ import static me.petrolingus.lim.Configuration.*;
 
 public class Algorithm {
 
-    private int[][] matrix = new int[N][N];
+    private double time = 0;
+
+    private final int[][] matrix = new int[N][N];
 
     public void initialize() {
 
@@ -32,8 +34,36 @@ public class Algorithm {
         // Check generated spins
         testCorrectSpinGeneration();
 
-        double e = calculateEnergy();
-        System.out.println(e);
+        System.out.println("Initialize done");
+    }
+
+    public void step() {
+        for (int i = 0; i < N * N; i++) {
+            int x0 = ThreadLocalRandom.current().nextInt(N);
+            int y0 = ThreadLocalRandom.current().nextInt(N);
+            int x1 = ThreadLocalRandom.current().nextInt(N);
+            int y1 = ThreadLocalRandom.current().nextInt(N);
+            int s0 = matrix[y0][x0];
+            int s1 = matrix[y1][x1];
+            if (s0 != s1) {
+                double energy0 = calculateEnergy();
+                matrix[y0][x0] = s1;
+                matrix[y1][x1] = s0;
+                double energy1 = calculateEnergy();
+                double deltaE = energy1 - energy0;
+                double gibbs = Math.exp(-deltaE / 0.5);
+                if (deltaE <= 0 || Math.random() < gibbs) {
+                    time += 1.0 / (N * N);
+                } else {
+                    matrix[y0][x0] = s0;
+                    matrix[y1][x1] = s1;
+                }
+            }
+        }
+    }
+
+    public double getTime() {
+        return time;
     }
 
     public void testCorrectSpinGeneration() {
@@ -50,25 +80,8 @@ public class Algorithm {
         }
     }
 
-    public void testPerformance() {
-
-        double e = 0;
-        long start1 = System.currentTimeMillis();
-        for (int i = 0; i < 1_000_000; i++) {
-            e += calculateEnergy();
-        }
-        long stop1 = System.currentTimeMillis();
-        System.out.println(stop1 - start1 + ": " + e);
-
-
-        e = 0;
-        long start2 = System.currentTimeMillis();
-        for (int i = 0; i < 1_000_000; i++) {
-            e += calculateEnergy2();
-        }
-        long stop2 = System.currentTimeMillis();
-        System.out.println(stop2 - start2 + ": " + e);
-
+    public int[][] getMatrix() {
+        return matrix;
     }
 
 //    private void process(int[][] matrix) {
@@ -109,21 +122,5 @@ public class Algorithm {
         }
 
         return -ENERGY_SHIFT * energy / 2;
-    }
-
-    public double calculateEnergy2() {
-
-        double energy = 0;
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
-                int left = (j == 0) ? matrix[i][N - 1] : matrix[i][j - 1];
-                int right = (j == N - 1) ? matrix[i][0] : matrix[i][j + 1];
-                int top = (i == 0) ? matrix[N - 1][j] : matrix[i - 1][j];
-                int bottom = (i == N - 1) ? matrix[0][j] : matrix[i + 1][j];
-                energy += matrix[i][j] * (left + right + top + bottom);
-            }
-        }
-
-        return -ENERGY_SHIFT * energy / 4;
     }
 }
