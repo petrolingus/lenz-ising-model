@@ -1,6 +1,6 @@
 package me.petrolingus.lim;
 
-import java.awt.*;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static me.petrolingus.lim.Configuration.*;
@@ -10,6 +10,14 @@ public class Algorithm {
     private int[][] matrix = new int[N][N];
     private int time;
     private double energy;
+    private boolean isDone = false;
+    public Queue<Double> energyList = new ArrayDeque<>();
+
+    private double temperature;
+
+    public Algorithm(double temperature) {
+        this.temperature = temperature;
+    }
 
     public void initialize() {
 
@@ -33,7 +41,8 @@ public class Algorithm {
         }
 
         time = 0;
-        energy = calculateEnergy();
+        // TODO: 0 or calculateEnergy();
+        energy = 0;
 
         // Check generated spins
         testCorrectSpinGeneration();
@@ -43,6 +52,9 @@ public class Algorithm {
     }
 
     public void step() {
+        if (isDone) {
+            return;
+        }
         for (int i = 0; i < N * N; i++) {
             int x0 = ThreadLocalRandom.current().nextInt(N);
             int y0 = ThreadLocalRandom.current().nextInt(N);
@@ -56,24 +68,36 @@ public class Algorithm {
                 double delta1 = deltaEnergy(y1, x1);
                 matrix[y1][x1] = s0;
                 double delta = 2 * (delta0 + delta1);
-                double gibbs = Math.exp(-delta / TEMPERATURE);
+                double gibbs = Math.exp(-delta / temperature);
                 if (delta <= 0 || Math.random() < gibbs) {
-
+                    energy += delta / (N * N);
                 } else {
                     matrix[y0][x0] = s0;
                     matrix[y1][x1] = s1;
                 }
             }
         }
+        energyList.offer(energy);
         time++;
+        if (time == Configuration.MAX_STEPS) {
+            isDone = true;
+        }
+    }
+
+    public int[][] getMatrix() {
+        return matrix;
     }
 
     public double getTime() {
         return time;
     }
 
-    public int[][] getMatrix() {
-        return matrix;
+    public double getEnergy() {
+        return energy;
+    }
+
+    public boolean isDone() {
+        return isDone;
     }
 
     private double calculateEnergy() {

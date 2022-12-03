@@ -1,77 +1,93 @@
 package me.petrolingus.lim;
 
+import com.ibm.icu.text.SpoofChecker;
+import de.gsi.chart.XYChart;
+import de.gsi.chart.axes.spi.DefaultNumericAxis;
+import de.gsi.chart.renderer.ErrorStyle;
+import de.gsi.chart.renderer.spi.ErrorDataSetRenderer;
+import de.gsi.dataset.spi.DoubleDataSet;
+import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
-import javafx.scene.paint.Color;
+import javafx.scene.layout.StackPane;
 
-import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-import static me.petrolingus.lim.Configuration.N;
+import static me.petrolingus.lim.Configuration.*;
 
 public class Controller {
 
     public ImageView imageView;
 
-    Algorithm algorithm = new Algorithm();
-    int s = 800;
-    int size = s * s;
-    double pixelSize = (double) s / N;
-    int[] buffer = new int[size];
-    WritableImage writableImage = new WritableImage(s, s);
-    PixelWriter pixelWriter = writableImage.getPixelWriter();
+    public StackPane stackPane;
+
+    public TextField maxStepsField;
+    public TextField temperatureField;
+
+    private XYChart chart;
 
     public void initialize() {
 
+        imageView.setFitWidth(IMAGE_SIZE);
+        imageView.setFitHeight(IMAGE_SIZE);
+
+        chart = new XYChart(new DefaultNumericAxis(), new DefaultNumericAxis());
+        chart.setAnimated(false);
+        stackPane.getChildren().add(chart);
+        final ErrorDataSetRenderer errorRenderer = new ErrorDataSetRenderer();
+        chart.getRenderers().setAll(errorRenderer);
+        errorRenderer.setErrorType(ErrorStyle.NONE);
+        errorRenderer.setDrawMarker(false);
+    }
+
+    public void startButton() {
+        double temperature = Double.parseDouble(temperatureField.getText());
+        run(temperature);
+    }
+
+    private void run(double temperature) {
+
+        Algorithm algorithm = new Algorithm(temperature);
         algorithm.initialize();
-//        algorithm.test();
 
-        imageView.setFitWidth(s);
-        imageView.setFitHeight(s);
+        int[] buffer = new int[IMAGE_PIXELS];
+        WritableImage writableImage = new WritableImage(IMAGE_SIZE, IMAGE_SIZE);
+        PixelWriter pixelWriter = writableImage.getPixelWriter();
 
-        final long[] start = {System.currentTimeMillis()};
+        String stringTemperature = String.format("%8.2f", temperature);
+        final DoubleDataSet dataSet = new DoubleDataSet("Energy" + stringTemperature);
+        dataSet.setStyle("strokeWidth=1");
+        chart.getDatasets().add(dataSet);
 
-        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);
         executorService.scheduleWithFixedDelay(() -> {
-            foo1();
-            foo2();
-            foo3();
-            long stop = System.currentTimeMillis();
-            if (stop - start[0] > 1000) {
-                foo4();
-                start[0] = stop;
+            algorithm.step();
+            int[][] matrix = algorithm.getMatrix();
+            for (int i = 0; i < IMAGE_PIXELS; i++) {
+                int x = (int) Math.floor((i % IMAGE_SIZE) / PIXEL_SIZE);
+                int y = (int) Math.floor((i / IMAGE_SIZE) / PIXEL_SIZE);
+                if (matrix[y][x] == -1) {
+                    buffer[i] = 0xFF333333;
+                } else {
+                    buffer[i] = 0xFFFFFFFF;
+                }
             }
-        }, 1000, 1, TimeUnit.MILLISECONDS);
-    }
+            pixelWriter.setPixels(0, 0, IMAGE_SIZE, IMAGE_SIZE, PixelFormat.getIntArgbInstance(), buffer, 0, IMAGE_SIZE);
+            imageView.setImage(writableImage);
+        }, 300, 1, TimeUnit.MILLISECONDS);
 
-    public void foo1() {
-        algorithm.step();
-    }
-
-    public void foo2() {
-        int[][] matrix = algorithm.getMatrix();
-        for (int i = 0; i < size; i++) {
-            int x = (int) Math.floor((i % s) / pixelSize);
-            int y = (int) Math.floor((i / s) / pixelSize);
-            if (matrix[y][x] == -1) {
-                buffer[i] = 0xFF333333;
-            } else {
-                buffer[i] = 0xFFFFFFFF;
+        executorService.scheduleAtFixedRate(() -> {
+            Double poll = algorithm.energyList.poll();
+            if (poll != null) {
+                dataSet.add(algorithm.getTime(), poll);
             }
-        }
-    }
-
-    public void foo3() {
-        pixelWriter.setPixels(0, 0, s, s, PixelFormat.getIntArgbInstance(), buffer, 0, s);
-        imageView.setImage(writableImage);
-    }
-
-    public void foo4() {
-        System.out.println(algorithm.getTime());
+            if (algorithm.isDone()) {
+                executorService.shutdown();
+            }
+        }, 300, 1, TimeUnit.MILLISECONDS);
     }
 }
