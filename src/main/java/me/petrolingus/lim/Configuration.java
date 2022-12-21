@@ -6,12 +6,7 @@ public interface Configuration {
 
     double J = 1;
 
-    int NORMALIZING_STEPS = 1000;
-
-    int MAX_STEPS = 2000;
-
     int IMAGE_SIZE = 800;
     int IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE;
     int PIXEL_SIZE = IMAGE_SIZE / N;
-
 }

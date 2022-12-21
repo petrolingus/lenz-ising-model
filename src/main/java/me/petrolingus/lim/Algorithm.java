@@ -7,36 +7,65 @@ import static me.petrolingus.lim.Configuration.*;
 
 public class Algorithm {
 
+    private static final int[][] initialConfiguration = new int[N][N];
     private final int[][] matrix = new int[N][N];
     private int time;
     private double energy;
     private boolean isDone = false;
-    public Queue<Double> energyList = new ArrayDeque<>();
 
     private final double temperature;
+    private final int maxSteps;
 
-    public Algorithm(double temperature) {
+    public Algorithm(double temperature, int maxSteps) {
         this.temperature = temperature;
+        this.maxSteps = maxSteps;
     }
 
-    public void initialize() {
-
+    public static void init() {
         // Generate spins
         for (int i = 0; i < N * N / 2; i++) {
             while (true) {
                 int x = ThreadLocalRandom.current().nextInt(N);
                 int y = ThreadLocalRandom.current().nextInt(N);
-                if (matrix[y][x] == 0) {
-                    matrix[y][x] = 1;
+                if (initialConfiguration[y][x] == 0) {
+                    initialConfiguration[y][x] = 1;
                     break;
                 }
             }
         }
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
-                if (matrix[i][j] == 0) {
-                    matrix[i][j] = -1;
+                if (initialConfiguration[i][j] == 0) {
+                    initialConfiguration[i][j] = -1;
                 }
+            }
+        }
+    }
+
+    public void initialize() {
+
+//        // Generate spins
+//        for (int i = 0; i < N * N / 2; i++) {
+//            while (true) {
+//                int x = ThreadLocalRandom.current().nextInt(N);
+//                int y = ThreadLocalRandom.current().nextInt(N);
+//                if (matrix[y][x] == 0) {
+//                    matrix[y][x] = 1;
+//                    break;
+//                }
+//            }
+//        }
+//        for (int i = 0; i < N; i++) {
+//            for (int j = 0; j < N; j++) {
+//                if (matrix[i][j] == 0) {
+//                    matrix[i][j] = -1;
+//                }
+//            }
+//        }
+
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                matrix[i][j] = initialConfiguration[i][j];
             }
         }
 
@@ -45,10 +74,10 @@ public class Algorithm {
         energy = 0;
 
         // Check generated spins
-        testCorrectSpinGeneration();
+//        testCorrectSpinGeneration();
 
-        System.out.println("Initialize done");
-        System.out.println("Init energy is equal to " + energy);
+//        System.out.println("Initialize done");
+//        System.out.println("Init energy is equal to " + energy);
     }
 
     public void step() {
@@ -69,7 +98,7 @@ public class Algorithm {
                 matrix[y1][x1] = s0;
                 double delta = 2 * (delta0 + delta1);
                 double gibbs = Math.exp(-delta / temperature);
-                if (delta <= 0 || Math.random() < gibbs) {
+                if (delta <= 0 || ThreadLocalRandom.current().nextDouble() < gibbs) {
                     energy += delta / (N * N);
                 } else {
                     matrix[y0][x0] = s0;
@@ -77,11 +106,8 @@ public class Algorithm {
                 }
             }
         }
-        if (time > NORMALIZING_STEPS) {
-            energyList.offer(energy);
-        }
         time++;
-        if (time == Configuration.MAX_STEPS) {
+        if (time == maxSteps) {
             isDone = true;
         }
     }
@@ -103,8 +129,7 @@ public class Algorithm {
         return isDone;
     }
 
-    @SuppressWarnings("unused")
-    private double calculateEnergy() {
+    public double calculateEnergy() {
         double energy = 0;
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
@@ -113,7 +138,7 @@ public class Algorithm {
                 energy += matrix[i][j] * (left + top);
             }
         }
-        return -J * energy;
+        return -J * energy / (N * N);
     }
 
     private double deltaEnergy(int i, int j) {

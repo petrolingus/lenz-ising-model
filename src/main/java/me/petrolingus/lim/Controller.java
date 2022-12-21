@@ -2,22 +2,26 @@ package me.petrolingus.lim;
 
 import de.gsi.chart.XYChart;
 import de.gsi.chart.axes.spi.DefaultNumericAxis;
+import de.gsi.chart.plugins.XValueIndicator;
 import de.gsi.chart.renderer.ErrorStyle;
 import de.gsi.chart.renderer.spi.ErrorDataSetRenderer;
-import de.gsi.dataset.DataSet;
 import de.gsi.dataset.spi.DoubleDataSet;
-import de.gsi.math.DataSetMath;
 import javafx.application.Platform;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.StackPane;
+import org.apache.commons.math3.analysis.UnivariateFunction;
+import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
+import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 
 import static me.petrolingus.lim.Configuration.*;
 
@@ -27,17 +31,23 @@ public class Controller {
     public StackPane stackPane;
     public StackPane stackPane1;
     public TextField maxStepsField;
-    public TextField temperatureField;
+    public TextField minTemperatureField;
+    public TextField maxTemperatureField;
+    public TextField temperatureSamplesField;
     private XYChart chart;
     private XYChart chart1;
+
+    private double[] xis;
+    private double[] yis;
 
     public void initialize() {
 
         imageView.setFitWidth(IMAGE_SIZE);
         imageView.setFitHeight(IMAGE_SIZE);
 
-        chart = new XYChart(new DefaultNumericAxis(), new DefaultNumericAxis());
+        chart = new XYChart(new DefaultNumericAxis("Temperature", null), new DefaultNumericAxis("Energy", null));
         chart.setAnimated(false);
+        chart.setLegendVisible(false);
         stackPane.getChildren().add(chart);
 
         ErrorDataSetRenderer errorRenderer = new ErrorDataSetRenderer();
@@ -45,32 +55,97 @@ public class Controller {
         errorRenderer.setErrorType(ErrorStyle.NONE);
         errorRenderer.setDrawMarker(false);
 
-        chart1 = new XYChart(new DefaultNumericAxis(), new DefaultNumericAxis());
+        DefaultNumericAxis xAxis = new DefaultNumericAxis("Temperature", null);
+        chart1 = new XYChart(xAxis, new DefaultNumericAxis("C", null));
         chart1.setAnimated(false);
+        final XValueIndicator xValueIndicator = new XValueIndicator(xAxis, 2.269, "Tc");
+        xValueIndicator.setEditable(false);
+        chart1.getPlugins().add(xValueIndicator);
         stackPane1.getChildren().add(chart1);
+
+        ErrorDataSetRenderer errorRenderer2 = new ErrorDataSetRenderer();
+        chart1.getRenderers().setAll(errorRenderer2);
+        errorRenderer2.setErrorType(ErrorStyle.NONE);
+        errorRenderer2.setDrawMarker(false);
     }
 
     public void startButton() {
-        double temperature = Double.parseDouble(temperatureField.getText());
-        run(temperature);
+
+        double minTemperature = Double.parseDouble(minTemperatureField.getText());
+        double maxTemperature = Double.parseDouble(maxTemperatureField.getText());
+        int temperatureSamples = Integer.parseInt(temperatureSamplesField.getText());
+        int maxSteps = Integer.parseInt(maxStepsField.getText());
+
+        double h = (maxTemperature - minTemperature) / (temperatureSamples - 1);
+
+        final DoubleDataSet dataSet = new DoubleDataSet("Energy");
+        dataSet.setStyle("strokeWidth=1");
+        chart.getDatasets().add(dataSet);
+
+        xis = new double[temperatureSamples];
+        yis = new double[temperatureSamples];
+
+        Algorithm.init();
+
+        new Thread(() -> {
+            for (int i = 0; i < temperatureSamples; i++) {
+                double temperature = minTemperature + h * i;
+                System.out.println(temperature);
+                double energy = run(temperature, maxSteps);
+                Platform.runLater(() -> {
+                    dataSet.add(temperature, energy);
+                });
+                xis[i] = temperature;
+                yis[i] = energy;
+
+                // Save Image
+                String stringTemperature = String.format("%1.2f", temperature);
+                File outputFile = new File("img/system-n" + N + "-t" + stringTemperature + "-norm" + maxSteps + ".png");
+                BufferedImage bImage = SwingFXUtils.fromFXImage(imageView.getImage(), null);
+                try {
+                    ImageIO.write(bImage, "png", outputFile);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }).start();
     }
 
-    private void run(double temperature) {
+    public void onInterpolate() {
 
-        Algorithm algorithm = new Algorithm(temperature);
+        if (chart1.getDatasets().size() != 0) {
+            chart1.getDatasets().clear();
+        }
+
+        SplineInterpolator splineInterpolator = new SplineInterpolator();
+        PolynomialSplineFunction interpolate = splineInterpolator.interpolate(xis, yis);
+        UnivariateFunction derivative = interpolate.derivative();
+
+        final DoubleDataSet dataSet = new DoubleDataSet("δε/δT");
+        dataSet.setStyle("strokeWidth=1");
+        chart1.getDatasets().add(dataSet);
+
+        double minTemperature = Double.parseDouble(minTemperatureField.getText());
+        double maxTemperature = Double.parseDouble(maxTemperatureField.getText());
+        int temperatureSamples = 256;
+
+        double h = (maxTemperature - minTemperature) / (temperatureSamples - 1);
+
+        for (int i = 0; i < temperatureSamples; i++) {
+            double temperature = minTemperature + h * i;
+            dataSet.add(temperature, derivative.value(temperature));
+        }
+    }
+
+    private double run(double temperature, int maxSteps) {
+
+        Algorithm algorithm = new Algorithm(temperature, maxSteps);
         algorithm.initialize();
 
         int[] buffer = new int[IMAGE_PIXELS];
         WritableImage writableImage = new WritableImage(IMAGE_SIZE, IMAGE_SIZE);
-        PixelWriter pixelWriter = writableImage.getPixelWriter();
 
-        String stringTemperature = String.format("%8.2f", temperature);
-        final DoubleDataSet dataSet = new DoubleDataSet("Energy" + stringTemperature);
-        dataSet.setStyle("strokeWidth=1");
-        chart.getDatasets().add(dataSet);
-
-        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);
-        executorService.scheduleWithFixedDelay(() -> {
+        while (!algorithm.isDone()) {
             algorithm.step();
             int[][] matrix = algorithm.getMatrix();
             for (int i = 0; i < IMAGE_PIXELS; i++) {
@@ -82,23 +157,13 @@ public class Controller {
                     buffer[i] = 0xFFFFFFFF;
                 }
             }
-            pixelWriter.setPixels(0, 0, IMAGE_SIZE, IMAGE_SIZE, PixelFormat.getIntArgbInstance(), buffer, 0, IMAGE_SIZE);
-            imageView.setImage(writableImage);
-        }, 300, 1, TimeUnit.MILLISECONDS);
+            Platform.runLater(() -> {
+                PixelWriter pixelWriter = writableImage.getPixelWriter();
+                pixelWriter.setPixels(0, 0, IMAGE_SIZE, IMAGE_SIZE, PixelFormat.getIntArgbInstance(), buffer, 0, IMAGE_SIZE);
+                imageView.setImage(writableImage);
+            });
+        }
 
-        executorService.scheduleAtFixedRate(() -> {
-            Double poll = algorithm.energyList.poll();
-            if (poll != null) {
-                dataSet.add(algorithm.getTime(), poll);
-            }
-            if (algorithm.isDone()) {
-                DataSet derivative = DataSetMath.derivativeFunction(dataSet);
-                derivative.setStyle("strokeColor=darkgreen;fillColor=darkgreen;strokeWidth=1");
-                Platform.runLater(() -> {
-                    chart1.getDatasets().addAll(derivative);
-                });
-                executorService.shutdown();
-            }
-        }, 300, 1, TimeUnit.MILLISECONDS);
+        return algorithm.calculateEnergy();
     }
 }

@@ -9,15 +9,15 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="me.petrolingus.lim.Controller">
+<VBox xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="me.petrolingus.lim.Controller">
    <children>
       <HBox spacing="8.0">
          <children>
             <ImageView fx:id="imageView" fitHeight="800.0" fitWidth="800.0" pickOnBounds="true" preserveRatio="true" />
             <VBox>
                <children>
-                  <StackPane fx:id="stackPane" prefHeight="400.0" prefWidth="800.0" />
-                  <StackPane fx:id="stackPane1" prefHeight="400.0" prefWidth="800.0" />
+                  <StackPane fx:id="stackPane" maxWidth="800.0" minWidth="800.0" prefHeight="400.0" prefWidth="800.0" />
+                  <StackPane fx:id="stackPane1" maxWidth="800.0" minWidth="800.0" prefHeight="400.0" prefWidth="800.0" />
                </children>
             </VBox>
          </children>
@@ -25,14 +25,38 @@
             <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
          </padding>
       </HBox>
-      <HBox prefHeight="100.0" prefWidth="200.0">
+      <HBox spacing="10.0">
          <children>
-            <Label text="Max Steps" />
-            <TextField fx:id="maxStepsField" />
-            <Label text="Temperature" />
-            <TextField fx:id="temperatureField" text="0.5" />
-            <Button mnemonicParsing="false" onAction="#startButton" text="Button" />
+            <HBox spacing="6.0">
+               <children>
+                  <Label maxHeight="1.7976931348623157E308" text="Max Steps" />
+                  <TextField fx:id="maxStepsField" text="2000" />
+               </children>
+            </HBox>
+            <HBox spacing="6.0">
+               <children>
+                  <Label maxHeight="1.7976931348623157E308" text="Min Temperature" />
+                  <TextField fx:id="minTemperatureField" text="0.5" />
+               </children>
+            </HBox>
+            <HBox spacing="6.0">
+               <children>
+                  <Label maxHeight="1.7976931348623157E308" text="Max Temperature" />
+                  <TextField fx:id="maxTemperatureField" text="3.5" />
+               </children>
+            </HBox>
+            <HBox spacing="6.0">
+               <children>
+                  <Label maxHeight="1.7976931348623157E308" text="Temperature Samples" />
+                  <TextField fx:id="temperatureSamplesField" text="32" />
+               </children>
+            </HBox>
+            <Button mnemonicParsing="false" onAction="#startButton" text="Start" />
+            <Button mnemonicParsing="false" onAction="#onInterpolate" text="Interpolate" />
          </children>
+         <padding>
+            <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
+         </padding>
       </HBox>
    </children>
 </VBox>
