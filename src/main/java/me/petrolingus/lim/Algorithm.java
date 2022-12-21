@@ -1,5 +1,7 @@
 package me.petrolingus.lim;
 
+import org.apache.commons.math3.util.FastMath;
+
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -8,9 +10,9 @@ import static me.petrolingus.lim.Configuration.*;
 public class Algorithm {
 
     private static final int[][] initialConfiguration = new int[N][N];
+
     private final int[][] matrix = new int[N][N];
     private int time;
-    private double energy;
     private boolean isDone = false;
 
     private final double temperature;
@@ -22,6 +24,7 @@ public class Algorithm {
     }
 
     public static void init() {
+
         // Generate spins
         for (int i = 0; i < N * N / 2; i++) {
             while (true) {
@@ -40,44 +43,18 @@ public class Algorithm {
                 }
             }
         }
+
+        // Check generated spins
+        testCorrectSpinGeneration();
     }
 
     public void initialize() {
-
-//        // Generate spins
-//        for (int i = 0; i < N * N / 2; i++) {
-//            while (true) {
-//                int x = ThreadLocalRandom.current().nextInt(N);
-//                int y = ThreadLocalRandom.current().nextInt(N);
-//                if (matrix[y][x] == 0) {
-//                    matrix[y][x] = 1;
-//                    break;
-//                }
-//            }
-//        }
-//        for (int i = 0; i < N; i++) {
-//            for (int j = 0; j < N; j++) {
-//                if (matrix[i][j] == 0) {
-//                    matrix[i][j] = -1;
-//                }
-//            }
-//        }
-
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
                 matrix[i][j] = initialConfiguration[i][j];
             }
         }
-
         time = 0;
-        // TODO: 0 or calculateEnergy();
-        energy = 0;
-
-        // Check generated spins
-//        testCorrectSpinGeneration();
-
-//        System.out.println("Initialize done");
-//        System.out.println("Init energy is equal to " + energy);
     }
 
     public void step() {
@@ -98,9 +75,7 @@ public class Algorithm {
                 matrix[y1][x1] = s0;
                 double delta = 2 * (delta0 + delta1);
                 double gibbs = Math.exp(-delta / temperature);
-                if (delta <= 0 || ThreadLocalRandom.current().nextDouble() < gibbs) {
-                    energy += delta / (N * N);
-                } else {
+                if (!(delta <= 0) && !(ThreadLocalRandom.current().nextDouble() < gibbs)) {
                     matrix[y0][x0] = s0;
                     matrix[y1][x1] = s1;
                 }
@@ -114,15 +89,6 @@ public class Algorithm {
 
     public int[][] getMatrix() {
         return matrix;
-    }
-
-    public int getTime() {
-        return time;
-    }
-
-    @SuppressWarnings("unused")
-    public double getEnergy() {
-        return energy;
     }
 
     public boolean isDone() {
@@ -149,15 +115,13 @@ public class Algorithm {
         return J * matrix[i][j] * (left + right + top + bottom);
     }
 
-    private void testCorrectSpinGeneration() {
-
+    private static void testCorrectSpinGeneration() {
         int sum = 0;
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
-                sum += matrix[i][j];
+                sum += initialConfiguration[i][j];
             }
         }
-
         if (sum != 0) {
             System.err.println("Not corrected fill matrix!");
         }

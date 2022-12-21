@@ -92,9 +92,7 @@ public class Controller {
                 double temperature = minTemperature + h * i;
                 System.out.println(temperature);
                 double energy = run(temperature, maxSteps);
-                Platform.runLater(() -> {
-                    dataSet.add(temperature, energy);
-                });
+                Platform.runLater(() -> dataSet.add(temperature, energy));
                 xis[i] = temperature;
                 yis[i] = energy;
 
@@ -149,8 +147,8 @@ public class Controller {
             algorithm.step();
             int[][] matrix = algorithm.getMatrix();
             for (int i = 0; i < IMAGE_PIXELS; i++) {
-                int x = (int) Math.floor((i % IMAGE_SIZE) / PIXEL_SIZE);
-                int y = (int) Math.floor((i / IMAGE_SIZE) / PIXEL_SIZE);
+                int x = (i % IMAGE_SIZE) / PIXEL_SIZE;
+                int y = (i / IMAGE_SIZE) / PIXEL_SIZE;
                 if (matrix[y][x] == -1) {
                     buffer[i] = 0xFF333333;
                 } else {
