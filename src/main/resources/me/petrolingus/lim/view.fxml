@@ -48,7 +48,7 @@
             <HBox spacing="6.0">
                <children>
                   <Label maxHeight="1.7976931348623157E308" text="Temperature Samples" />
-                  <TextField fx:id="temperatureSamplesField" text="32" />
+                  <TextField fx:id="temperatureSamplesField" text="30" />
                </children>
             </HBox>
             <Button mnemonicParsing="false" onAction="#startButton" text="Start" />
